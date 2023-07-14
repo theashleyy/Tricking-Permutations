@@ -1,0 +1,95 @@
+import pandas as pd
+import numpy as np
+import itertools
+from io import StringIO
+
+row = 0
+col = 0
+count = 0
+
+Output = "Path to Output.xlsx"
+READ = "Path to TRICKING PERMUTATIONS.xlsx"
+
+writer = pd.ExcelWriter(Output, engine='xlsxwriter')
+
+
+
+
+#TRICKS
+mytrickslist = pd.read_excel(READ, sheet_name="Tricks", header=None, skiprows=1)
+trickscolstitle = pd.read_excel(READ, sheet_name="Tricks", header=None,nrows=1).values[0]
+mytrickslist.columns = trickscolstitle
+
+tricks = mytrickslist["Tricks"].dropna()
+takeoff_leg = mytrickslist["Take Off Leg"].dropna()
+takeoff_stance = mytrickslist["Take Off Stance"].dropna()
+landing_leg = mytrickslist["Landing Leg"].dropna()
+landing_stance = mytrickslist["Landing Stance"].dropna()
+
+#####################################################
+#TRANSITIONS
+transitions_df = pd.read_excel(READ, sheet_name="Transitions", header=None, skiprows=1)
+transitions = transitions_df.iloc[:, 0]
+#####################################################
+
+# Iterate over all possible combinations of trick-transition-trick
+for trick, transition, next_trick in itertools.product(tricks, transitions, tricks):
+    # Find the indices of the involved tricks in the Tricks table
+    trick_index = tricks[tricks == trick].index[0]
+    next_trick_index = tricks[tricks == next_trick].index[0]
+
+    # Retrieve the takeoff and landing information for the current trick and the next trick
+    trick_takeoff_leg = takeoff_leg[trick_index]
+    trick_landing_leg = landing_leg[trick_index]
+
+    trick_takeoff_stance = takeoff_stance[trick_index]
+    trick_landing_stance = landing_stance[trick_index]
+
+    next_trick_takeoff_leg = takeoff_leg[next_trick_index]
+    next_trick_landing_leg = landing_leg[next_trick_index]
+
+    next_trick_takeoff_stance = takeoff_stance[next_trick_index]
+    next_trick_landing_stance = landing_stance[next_trick_index]
+                                          
+
+    # Check if the transition is valid based on the leg compatibility
+    is_valid_transition = False
+    if transition == 'Carry Thru':
+        is_valid_transition = (trick_landing_leg == next_trick_takeoff_leg)
+    
+    elif transition == 'Reversal':
+        # Define additional conditions for 'Reversal' transition if necessary
+        is_valid_transition = (trick_landing_leg == next_trick_takeoff_leg)
+    elif transition == 'Redirect':
+        # Define additional conditions for 'Redirect' transition if necessary
+        is_valid_transition = (trick_landing_leg == next_trick_takeoff_leg)
+    elif transition == "Swing":
+        is_valid_transition = (trick_landing_leg == next_trick_takeoff_leg == 'Left' and
+                               trick_landing_stance == next_trick_takeoff_stance == 'Backside')
+    elif transition == "Front Swing":
+        is_valid_transition = (trick_landing_leg == next_trick_takeoff_leg and
+                               trick_landing_stance == next_trick_takeoff_stance == 'Frontside')
+    # I'M GOING TO LEAVE OUT FRONTSIDE WRAPS, BECAUSE ESSENTIALLY ONLY SEMI WRAP KICK IS POSSIBLE BUT CAN'T FIGURE OUT FORMULA TO NOT HAVE INVALID FS LIKE WEBSTER WRAP TDR
+    elif transition == "Wrap":
+        is_valid_transition = (trick_landing_leg == next_trick_takeoff_leg == 'Right' and
+                               trick_landing_stance == next_trick_takeoff_stance == 'Backside')
+    elif transition == "Pop":
+        is_valid_transition = (trick_landing_stance == next_trick_takeoff_stance)
+    elif transition == "Punch": 
+        is_valid_transition = (trick_landing_stance == next_trick_takeoff_stance)
+
+    elif transition == 'Vanish': #NEED TO EDIT THIS RULE, BUT IT SEEMS LIKE IT WILL BE REALLY COMPLICATED
+        # Define additional conditions for 'Vanish' transition if necessary
+        is_valid_transition = (trick_landing_leg != next_trick_takeoff_leg)
+    elif transition == 'Skip': #NEED TO EDIT THIS RULE, BUT IT SEEMS LIKE IT WILL BE REALLY COMPLICATED
+        # Define additional conditions for 'Vanish' transition if necessary
+        is_valid_transition = True
+    
+    if is_valid_transition:
+        combination = f"{trick} - {transition} - {next_trick}"
+        print(combination)
+        combination_df = pd.DataFrame([combination])
+        combination_df.to_excel(writer, sheet_name='Sheet1', startrow=row, startcol=col, header=False, index=False)
+        row += 1
+
+writer.save()
